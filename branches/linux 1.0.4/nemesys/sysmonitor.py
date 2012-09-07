@@ -249,19 +249,15 @@ def _check_ethernet(res = RES_ETH):
     #logger.debug(ET.tostring(device))
     type = device.find('Type').text
     if (type == 'Ethernet 802.3'):
-      guid = device.find('GUID').text
-      dev_info = getDevInfo(guid)
-      if (dev_info != None):
-        dev_type = dev_info['type']
-        if (dev_type == 0 or dev_type == 14):
-          status = int(device.find('Status').text)
-          if (status == 7 and CHECK_VALUES[res] != 'On Line'):
-            CHECK_VALUES[res] = 'Off Line'
-            check_info = 'Dispositivi ethernet non attivi.'
-            raise sysmonitorexception.WARNETH
-          elif (status == 2):
-            CHECK_VALUES[res] = 'On Line'
-            check_info = 'Dispositivi ethernet attivi.'
+      status = device.find('Status').text
+      isAct = device.find('isActive').text
+      if (status == 'Disabled' and CHECK_VALUES[res] != 'On Line'):  
+        CHECK_VALUES[res] = 'Off Line'
+        check_info = 'Dispositivi ethernet non attivi.'
+        raise sysmonitorexception.WARNETH
+      elif (status == 'Enabled' and isAct == 'True'):
+        CHECK_VALUES[res] = 'On Line'
+        check_info = 'Dispositivi ethernet attivi.'
             
   if (CHECK_VALUES[res] == 'Not Present'):
     raise sysmonitorexception.WARNETH
@@ -281,19 +277,14 @@ def _check_wireless(res = RES_WIFI):
     #logger.debug(ET.tostring(device))
     type = device.find('Type').text
     if (type == 'Wireless'):
-      guid = device.find('GUID').text
-      dev_info = getDevInfo(guid)
-      if (dev_info != None):
-        dev_type = dev_info['type']
-        if (dev_type == 0 or dev_type == 25):
-          status = int(device.find('Status').text)
-          if (status == 7 and CHECK_VALUES[res] != 'On Line'):
-            CHECK_VALUES[res] = 'Off Line'
-            check_info = 'Dispositivi wireless non attivi.'
-          elif (status == 2):
-            CHECK_VALUES[res] = 'On Line'
-            check_info = 'Dispositivi wireless attivi.'
-            raise sysmonitorexception.WARNWLAN
+      status = device.find('Status').text
+      if (status == 'Disabled' and CHECK_VALUES[res] != 'On Line'):  
+        CHECK_VALUES[res] = 'Off Line'
+        check_info = 'Dispositivi wireless non attivi.'
+      elif (status == 'Enabled'):
+        CHECK_VALUES[res] = 'On Line'
+        check_info = 'Dispositivi wireless attivi.'
+        raise sysmonitorexception.WARNWLAN
             
   return check_info
 
@@ -301,42 +292,28 @@ def _check_hspa(res = RES_HSPA):
 
   global CHECK_VALUES
 
-  CHECK_VALUES[res] = 'Not Present'
+  CHECK_VALUES[res] = 'Off Line'
 
-  check_info = 'Dispositivi HSPA non presenti.'
+  check_info = 'Dispositivi HSPA non attivi o non presenti.'
   data = _get_NetIF(1)
   
   for device in data.findall('rete/NetworkDevice'):
     #logger.debug(ET.tostring(device))
     type = device.find('Type').text
     
-    if (type == 'External Modem'):
-      dev_id = device.find('ID').text
-      if (re.search('USB',dev_id)):
-        CHECK_VALUES[res] = 'Off Line'
-        check_info = 'Dispositivi HSPA non attivi.'
-        dev_info = getDevInfo()
-        if (dev_info != None):
-          dev_type = dev_info['type']
-          dev_mask = dev_info['mask']
-          if (dev_type == 3 or dev_type == 17 or dev_mask == '255.255.255.255'):
-            CHECK_VALUES[res] = 'On Line'
-            check_info = 'Dispositivi HSPA attivi.'
-            raise sysmonitorexception.WARNHSPA
+    if (type == 'WWAN'):
+      CHECK_VALUES[res] = 'On Line'
+      check_info = 'Dispositivi HSPA attivi.'
+      raise sysmonitorexception.WARNHSPA
     
-    elif (type == 'WWAN'):
-      guid = device.find('GUID').text
-      dev_info = getDevInfo(guid)
-      if (dev_info != None):
-        dev_type = dev_info['type']
-        if (dev_type == 0 or dev_type == 17):
-          status = int(device.find('Status').text)
-          if (status == 7 and CHECK_VALUES[res] != 'On Line'):
-            CHECK_VALUES[res] = 'Off Line'
-            check_info = 'Dispositivi HSPA non attivi.'
-          elif (status == 2):
-            CHECK_VALUES[res] = 'On Line'
-            raise sysmonitorexception.WARNHSPA
+#      status = device.find('Status').text
+#      if (status == 'Disabled' and CHECK_VALUES[res] != 'On Line'):  
+#        CHECK_VALUES[res] = 'Off Line'
+#        check_info = 'Dispositivi HSPA non attivi.'
+#      elif (status == 'Enabled'):
+#        CHECK_VALUES[res] = 'On Line'
+#        check_info = 'Dispositivi HSPA attivi.'
+#        raise sysmonitorexception.WARNHSPA
 
   return check_info
   
@@ -503,7 +480,7 @@ def _get_NetIF(type = 0):
 
   global NETIF_TIME, NETIF_1, NETIF_2
 
-  age = 20 #seconds
+  age = 4 #seconds
   now = time.time()
   
   if ( NETIF_TIME == None ):
